@@ -7,6 +7,8 @@ SHARPS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 FLATS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 MAJOR_STEPS = [2, 2, 1, 2, 2, 2, 1]
 MINOR_STEPS = [2, 1, 2, 2, 1, 2, 2]
+MAJOR_PENTATONIC_STEPS = [2, 2, 3, 2, 3]
+MINOR_PENTATONIC_STEPS = [3, 2, 2, 3, 2]
 NUM_FRETS = 16
 
 FLAT_KEYS_MINOR = ["D", "G", "C", "F", "Bb", "Eb"]
@@ -52,27 +54,44 @@ def colored(text, color_name):
     return f"{style}{ANSI_COLORS[color_name]}{text}{ANSI_RESET}"
 
 
-def build_scale(key, major_or_minor):
-    if major_or_minor == "major":
+def normalize_mode(mode_text):
+    mode = re.sub(r"[^a-z]", "", mode_text.lower())
+    mode_aliases = {
+        "major": "major",
+        "minor": "minor",
+        "majorpentatonic": "major_pentatonic",
+        "majorpenta": "major_pentatonic",
+        "majpentatonic": "major_pentatonic",
+        "majpenta": "major_pentatonic",
+        "minorpentatonic": "minor_pentatonic",
+        "minorpenta": "minor_pentatonic",
+        "minpentatonic": "minor_pentatonic",
+        "minpenta": "minor_pentatonic",
+    }
+    return mode_aliases.get(mode, mode)
+
+
+def build_scale(key, mode):
+    if mode in ("major", "major_pentatonic"):
         if key in FLAT_KEYS_MAJOR:
             chromatic = FLATS
             pos = first_index(FLATS, key)
-            steps = MAJOR_STEPS
+            steps = MAJOR_STEPS if mode == "major" else MAJOR_PENTATONIC_STEPS
         elif key in SHARP_KEYS_MAJOR:
             chromatic = SHARPS
             pos = first_index(SHARPS, key)
-            steps = MAJOR_STEPS
+            steps = MAJOR_STEPS if mode == "major" else MAJOR_PENTATONIC_STEPS
         else:
             raise ValueError("not found")
-    elif major_or_minor == "minor":
+    elif mode in ("minor", "minor_pentatonic"):
         if key in FLAT_KEYS_MINOR:
             chromatic = FLATS
             pos = first_index(FLATS, key)
-            steps = MINOR_STEPS
+            steps = MINOR_STEPS if mode == "minor" else MINOR_PENTATONIC_STEPS
         elif key in SHARP_KEYS_MINOR:
             chromatic = SHARPS
             pos = first_index(SHARPS, key)
-            steps = MINOR_STEPS
+            steps = MINOR_STEPS if mode == "minor" else MINOR_PENTATONIC_STEPS
         else:
             raise ValueError("not found")
     else:
@@ -88,14 +107,14 @@ def build_scale(key, major_or_minor):
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python fretboard.py <key> <major|minor>")
+        print("Usage: python main.py <key> <major|minor|major pentatonic|minor pentatonic>")
         sys.exit(1)
 
     key = sys.argv[1]
-    major_or_minor = sys.argv[2]
+    mode = normalize_mode(" ".join(sys.argv[2:]))
 
     try:
-        chromatic, scale = build_scale(key, major_or_minor)
+        chromatic, scale = build_scale(key, mode)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(1)
