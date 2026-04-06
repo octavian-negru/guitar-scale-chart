@@ -19,6 +19,12 @@ FRET_MARKER_LOCATIONS = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24]
 # one of "fret markers" or "fret numbers"
 FRET_DISPLAY_STYLE = "fret markers"
 
+# Wider rendering settings for a larger, easier-to-read chart.
+SEGMENT_PAD = 2
+NOTE_BLOCK_WIDTH = 4
+FRET_STRIDE = SEGMENT_PAD + NOTE_BLOCK_WIDTH + SEGMENT_PAD + 1
+BOLD_NOTES = True
+
 COLOR_CONFIG = ["white", "red", "green", "yellow", "blue", "magenta", "cyan"]
 
 ANSI_COLORS = {
@@ -30,6 +36,7 @@ ANSI_COLORS = {
     "magenta": "\033[35m",
     "cyan": "\033[36m",
 }
+ANSI_BOLD = "\033[1m"
 ANSI_RESET = "\033[0m"
 
 
@@ -41,7 +48,8 @@ def first_index(seq, value):
 
 
 def colored(text, color_name):
-    return f"{ANSI_COLORS[color_name]}{text}{ANSI_RESET}"
+    style = ANSI_BOLD if BOLD_NOTES else ""
+    return f"{style}{ANSI_COLORS[color_name]}{text}{ANSI_RESET}"
 
 
 def build_scale(key, major_or_minor):
@@ -97,7 +105,7 @@ def main():
     if FRET_DISPLAY_STYLE == "fret numbers":
         print(" ", end="")
         for n in range(NUM_FRETS + 1):
-            print(f"{n:<5}", end="")
+            print(f"{n:^{FRET_STRIDE}}", end="")
         print()
 
     for string_index, string_note in enumerate(strings_display_order):
@@ -107,25 +115,24 @@ def main():
             degree = first_index(scale, note)
 
             if fret == 0:
-                print(" ", end="")
+                print(" " * SEGMENT_PAD, end="")
             else:
-                print("─", end="")
+                print("─" * SEGMENT_PAD, end="")
 
             if degree != -1:
-                print(colored(note, COLOR_CONFIG[degree]), end="")
-                if len(note) == 1:
-                    if fret == 0:
-                        print(" ", end="")
-                    else:
-                        print("─", end="")
+                print(colored(note.center(NOTE_BLOCK_WIDTH), COLOR_CONFIG[degree]), end="")
             else:
                 if fret == 0:
-                    print("  ", end="")
+                    print(" " * NOTE_BLOCK_WIDTH, end="")
                 else:
-                    print("──", end="")
+                    print("─" * NOTE_BLOCK_WIDTH, end="")
 
             if fret == 0:
-                print(" ", end="")
+                print(" " * SEGMENT_PAD, end="")
+            else:
+                print("─" * SEGMENT_PAD, end="")
+
+            if fret == 0:
                 if string_index == 0:
                     print("┌", end="")
                 elif string_index == 5:
@@ -133,7 +140,6 @@ def main():
                 else:
                     print("├", end="")
             else:
-                print("─", end="")
                 if string_index == 0:
                     print("┬", end="")
                 elif string_index == 5:
@@ -146,11 +152,11 @@ def main():
         print(" ", end="")
         for fret_num in range(NUM_FRETS + 1):
             if fret_num in (12, 24):
-                print("\b⬤ ⬤   ", end="")
+                print(f"{'⬤ ⬤':^{FRET_STRIDE}}", end="")
             elif fret_num in FRET_MARKER_LOCATIONS:
-                print(f"{'⬤ ':<7}", end="")
+                print(f"{'⬤':^{FRET_STRIDE}}", end="")
             else:
-                print(f"{'':<5}", end="")
+                print(f"{'':^{FRET_STRIDE}}", end="")
         print()
 
 
