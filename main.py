@@ -42,6 +42,13 @@ ANSI_COLORS = {
 ANSI_BOLD = "\033[1m"
 ANSI_RESET = "\033[0m"
 
+ENHARMONIC_EQUIVALENTS = {
+    "B#": "C",
+    "E#": "F",
+    "Cb": "B",
+    "Fb": "E",
+}
+
 PDF_NOTE_COLORS = [
     "#D1D5DB",
     "#C96B5C",
@@ -84,11 +91,25 @@ def mode_title(mode):
     return mode.replace("_", " ").title()
 
 
+def parse_key_input(key_text):
+    key = key_text.strip()
+    match = re.fullmatch(r"([A-Ga-g])([#b]?)", key)
+
+    if not match:
+        raise ValueError("invalid key")
+
+    letter, accidental = match.groups()
+    is_minor_hint = letter.islower()
+    return f"{letter.upper()}{accidental}", is_minor_hint
+
+
 def normalize_mode(mode_text):
     mode = re.sub(r"[^a-z]", "", mode_text.lower())
     mode_aliases = {
         "major": "major",
         "minor": "minor",
+        "pentatonic": "pentatonic",
+        "penta": "pentatonic",
         "majorpentatonic": "major_pentatonic",
         "majorpenta": "major_pentatonic",
         "majpentatonic": "major_pentatonic",
@@ -102,30 +123,44 @@ def normalize_mode(mode_text):
 
 
 def build_scale(key, mode):
+    preferred_chromatic = None
+
+    if "#" in key:
+        preferred_chromatic = SHARPS
+    elif "b" in key:
+        preferred_chromatic = FLATS
+
+    key_for_lookup = ENHARMONIC_EQUIVALENTS.get(key, key)
+
+    if preferred_chromatic is None:
+        if mode in ("major", "major_pentatonic"):
+            if key_for_lookup in FLAT_KEYS_MAJOR:
+                preferred_chromatic = FLATS
+            else:
+                preferred_chromatic = SHARPS
+        else:
+            if key_for_lookup in FLAT_KEYS_MINOR:
+                preferred_chromatic = FLATS
+            else:
+                preferred_chromatic = SHARPS
+
+    fallback_chromatic = FLATS if preferred_chromatic == SHARPS else SHARPS
+
     if mode in ("major", "major_pentatonic"):
-        if key in FLAT_KEYS_MAJOR:
-            chromatic = FLATS
-            pos = first_index(FLATS, key)
-            steps = MAJOR_STEPS if mode == "major" else MAJOR_PENTATONIC_STEPS
-        elif key in SHARP_KEYS_MAJOR:
-            chromatic = SHARPS
-            pos = first_index(SHARPS, key)
-            steps = MAJOR_STEPS if mode == "major" else MAJOR_PENTATONIC_STEPS
-        else:
-            raise ValueError("not found")
+        steps = MAJOR_STEPS if mode == "major" else MAJOR_PENTATONIC_STEPS
     elif mode in ("minor", "minor_pentatonic"):
-        if key in FLAT_KEYS_MINOR:
-            chromatic = FLATS
-            pos = first_index(FLATS, key)
-            steps = MINOR_STEPS if mode == "minor" else MINOR_PENTATONIC_STEPS
-        elif key in SHARP_KEYS_MINOR:
-            chromatic = SHARPS
-            pos = first_index(SHARPS, key)
-            steps = MINOR_STEPS if mode == "minor" else MINOR_PENTATONIC_STEPS
-        else:
-            raise ValueError("not found")
+        steps = MINOR_STEPS if mode == "minor" else MINOR_PENTATONIC_STEPS
     else:
         raise ValueError("not found")
+
+    pos = first_index(preferred_chromatic, key_for_lookup)
+    if pos != -1:
+        chromatic = preferred_chromatic
+    else:
+        pos = first_index(fallback_chromatic, key_for_lookup)
+        if pos == -1:
+            raise ValueError("not found")
+        chromatic = fallback_chromatic
 
     scale = []
     for step in steps:
@@ -307,8 +342,14 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(
         description="Render a guitar fretboard chart for a key and mode."
     )
-    parser.add_argument("key", help="Root note, for example C, E, F#, or Bb")
-    parser.add_argument("mode", nargs="+", help="Scale mode, for example minor or major pentatonic")
+    parser.add_argument(
+        "key",
+        help=(
+            "Root note, for example C, E, F#, or Bb. "
+            "If mode is omitted, uppercase defaults to major and lowercase defaults to minor."
+        ),
+    )
+    parser.add_argument("mode", nargs="*", help="Scale mode, for example minor or major pentatonic")
     parser.add_argument(
         "--pdf",
         action="store_true",
@@ -324,8 +365,20 @@ def parse_args(argv):
 
 def main():
     args = parse_args(sys.argv[1:])
-    key = args.key
-    mode = normalize_mode(" ".join(args.mode))
+
+    try:
+        key, is_minor_hint = parse_key_input(args.key)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
+
+    if args.mode:
+        mode = normalize_mode(" ".join(args.mode))
+    else:
+        mode = "minor" if is_minor_hint else "major"
+
+    if mode == "pentatonic":
+        mode = "minor_pentatonic" if is_minor_hint else "major_pentatonic"
 
     try:
         chromatic, scale = build_scale(key, mode)

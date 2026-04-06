@@ -25,6 +25,11 @@ just chart E minor --pdf
 - `<key>`: root note (examples: `C`, `E`, `F#`, `Bb`)
 - `<mode>` examples: `major`, `minor`, `major pentatonic`, `major penta`, `major-pentatonic`, `minor pentatonic`, `minor penta`, `minor-pentatonic`
 
+If you omit `<mode>`, it is inferred from the key casing:
+
+- Uppercase key (for example `E`, `Gb`) -> major
+- Lowercase key (for example `e`, `e#`) -> minor
+
 ### PDF export
 
 Write a PDF instead of printing the ANSI chart:
@@ -50,6 +55,10 @@ uv run main.py E minor
 uv run main.py E major pentatonic
 uv run main.py A minor penta
 uv run main.py E minor --pdf
+uv run main.py E
+uv run main.py e
+uv run main.py e#
+uv run main.py Gb
 ```
 
 Output of `uv run main.py E major pentatonic`:
