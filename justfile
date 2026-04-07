@@ -2,4 +2,4 @@ install:
 	uv sync
 
 chart *args:
-	uv run main.py {{args}}
+	CALLER_PWD="{{invocation_directory()}}" uv run main.py {{args}}

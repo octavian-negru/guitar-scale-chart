@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import os
 import re
 import sys
 
@@ -85,6 +86,15 @@ def key_filename_fragment(key):
 def output_filename_for_request(key, mode):
     mode_fragment = mode.replace("_", "-")
     return f"{key_filename_fragment(key)}-{mode_fragment}-fretboard.pdf"
+
+
+def caller_working_directory():
+    for var_name in ("CALLER_PWD", "JUST_WORKING_DIRECTORY", "INIT_CWD", "PWD"):
+        value = os.environ.get(var_name)
+        if value and os.path.isdir(value):
+            return value
+
+    return os.getcwd()
 
 
 def mode_title(mode):
@@ -358,7 +368,10 @@ def parse_args(argv):
     parser.add_argument(
         "-o",
         "--output",
-        help="Path for the generated PDF file. Defaults to an auto-formatted name.",
+        help=(
+            "Path for the generated PDF file. Relative paths are resolved from the caller's "
+            "working directory."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -396,6 +409,9 @@ def main():
 
         if not output_path.lower().endswith(".pdf"):
             output_path = f"{output_path}.pdf"
+
+        if not os.path.isabs(output_path):
+            output_path = os.path.join(caller_working_directory(), output_path)
 
         try:
             write_pdf(output_path, key, mode, fretboard)
