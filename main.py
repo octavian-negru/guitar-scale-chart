@@ -24,8 +24,10 @@ FRET_MARKER_LOCATIONS = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24]
 FRET_DISPLAY_STYLE = "fret markers"
 
 # Wider rendering settings for a larger, easier-to-read chart.
-SEGMENT_PAD = 2
-NOTE_BLOCK_WIDTH = 4
+TERMINAL_SCALE = max(1.0, float(os.environ.get("TERMINAL_SCALE", "1.3")))
+SEGMENT_PAD = max(1, int(round(2 * TERMINAL_SCALE)))
+NOTE_BLOCK_WIDTH = max(2, int(round(4 * TERMINAL_SCALE)))
+STRING_SPACER_ROWS = max(0, int(round(TERMINAL_SCALE)) - 1)
 FRET_STRIDE = SEGMENT_PAD + NOTE_BLOCK_WIDTH + SEGMENT_PAD + 1
 BOLD_NOTES = True
 
@@ -246,6 +248,16 @@ def render_terminal_lines(fretboard):
                     parts.append("┼")
 
         lines.append("".join(parts))
+
+        for _ in range(STRING_SPACER_ROWS):
+            spacer_parts = []
+            for cell in row["frets"]:
+                fret = cell["fret"]
+                spacer_parts.append(" " * SEGMENT_PAD)
+                spacer_parts.append(" " * NOTE_BLOCK_WIDTH)
+                spacer_parts.append(" " * SEGMENT_PAD)
+                spacer_parts.append("│" if fret == 0 else "┆")
+            lines.append("".join(spacer_parts))
 
     if FRET_DISPLAY_STYLE == "fret markers":
         parts = [" "]
